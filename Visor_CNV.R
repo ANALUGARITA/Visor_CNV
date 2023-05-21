@@ -43,7 +43,7 @@ lista_afectaciones <- c("Ninguna", lista_afectaciones)
 # Definición del objeto ui
 ui <- dashboardPage(
   dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional"),
-  dashboardPage(skin = "skyblue"),
+  #dashboardPage(skin = "skyblue"),
   dashboardSidebar(sidebarMenu(
     menuItem(
       text = "Filtros",
