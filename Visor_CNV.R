@@ -1,5 +1,4 @@
 # PAQUETES
-
 library(dplyr)
 library(sf)
 library(terra)
@@ -18,14 +17,13 @@ library(shinydashboard)
 # Capa de polígonos: afectaciones en proyectos
 afectaciones <-
   st_read(
-    "https://raw.githubusercontent.com/ANALUGARITA/visor_afectaciones/main/datos/CNV_afectaciones_WGS84.geojson",
+    "https://raw.githubusercontent.com/ANALUGARITA/Visor_CNV/main/datos/CNV_afectaciones_WGS84.geojson",
     quiet = TRUE
   )
-
 # Capa de puntos: inventario de proyectos
 proyectos <-
   st_read(
-    "https://raw.githubusercontent.com/ANALUGARITA/visor_afectaciones/main/datos/CNV_Proyectos_con_afectaciones_WGS84.geojson",
+    "https://raw.githubusercontent.com/ANALUGARITA/Visor_CNV/main/datos/CNV_Proyectos_con_afectaciones_WGS84.geojson",
     quiet = TRUE
   )
 
@@ -35,20 +33,17 @@ proyectos <-
 lista_rutas <- unique(afectaciones$id_ruta)
 lista_rutas <- sort(lista_rutas)
 lista_rutas <- c("Ninguna", lista_rutas)
-
 # Lista ordenada de afectaciones + "Ninguna"
 lista_afectaciones <- unique(afectaciones$id_afectacion)
 lista_afectaciones <- sort(lista_afectaciones)
 lista_afectaciones <- c("Ninguna", lista_afectaciones)
 
 
-
 # COMPONENTES DE LA APLICACIÓN SHINY
-
 # Definición del objeto ui
-
 ui <- dashboardPage(
   dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional"),
+  dashboardPage(skin = "skyblue"),
   dashboardSidebar(sidebarMenu(
     menuItem(
       text = "Filtros",
@@ -84,21 +79,20 @@ ui <- dashboardPage(
 )
 
 # Definición del objeto server
-
 server <- function(input, output, session) {
   filtrarAfectacion <- reactive({
-    # Remoción de geometrías y selección de columnas
+    # Filtrado de geometrías - selección de columnas
     afectaciones_filtrado <-
       afectaciones %>%
-      dplyr::select(id, estructura, elemento, dano, severidad, servicio, ruta, seccion, zona, disparador, fecha, observaciones, usuario, fecha_reporte, fotos)
+      dplyr::select(id_afectacion, area_plano, no_plano, estado_plano, finca_generada, estado_proceso, ubicacion, id_provincia, id_canton, id_distrito, id_ruta, nombre_disenador, fecha_diseno, nombre_ingeniero_admi, no_contratacion, nombre_proyecto)
     
-    # Filtrado de daños por estructura
+    # Filtrado de afectaciones por rutas
     if (input$id_ruta= "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
         filter(id_ruta == input$id_ruta)
     }   
-    # Filtrado de daños por tipo
+    # Filtrado de afectaciones por afectacion
     if (input$id_afectacion= "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
@@ -108,13 +102,13 @@ server <- function(input, output, session) {
   })
   
   
-  # Mapa ubicación de los daños
+  # Mapa ubicación de las afectaciones
   
   output$mapa <- renderLeaflet({
     registros <- filtrarAfectacion()
     
     
-    # Registro de daños, zonas de conservación y ráster de zonas de conservación por cantidad
+    # Registro de afectaciones y proyectos
     leaflet() %>%
       setView(-84.09, 9.84, 8) %>%
       addProviderTiles(providers$CartoDB.Voyager , group = "Voyager") %>%
@@ -126,13 +120,27 @@ server <- function(input, output, session) {
         stroke = TRUE,
         weight = 3,
         opacity = 1,
-        group = "Afectaciones"
+        group = "Afectaciones",
+        popup = (paste0(
+          "<strong>Ruta: </strong>", registros$id_ruta,
+          "<br>",
+          "<strong>No. Afectación: </strong>", registros$id_afectacion,
+          "<br>",
+          "<strong>No. Plano: </strong>", registros$no_plano,
+          "<br>",
+          "<strong>Área: </strong>", registros$area_plano,
+          "<br>",
+          "<strong>Estado: </strong>", registros$estado_proceso,
+          "<br>",
+          "<strong>Ubicación: </strong>", registros$ubicacion,
+          "<br>")
+        )
       ) %>%    
       addCircleMarkers(
         data = proyectos,
         stroke = F,
         radius = 3,
-        fillColor = '#d62828',
+        fillColor = "orange",
         fillOpacity = 1,
         group = "Proyectos",
         label = paste0(
@@ -141,21 +149,12 @@ server <- function(input, output, session) {
           "Estructura: ", registros$Estructura,
           ", ",
           "Ruta Naciona: ", registros$Ruta_Nacional,
-          ", "#,
-          #"Requiere: ", proyectos$Requiere adquisicion de derecho de via,
-          #", ",
-          #"Requiere: ", proyectos$Requiere adquisicion de derecho de via,
-        ),
-        popup = (paste0(
-          "<strong>Nombre: </strong>", registros$Nombre,
-          "<br>",
-          "<strong>Estructura: </strong>", registros$Estructura,
-          "<br>",
-          "<strong>Ruta Naciona: </strong>", registros$Ruta_Nacional,
-          "<br>")
+          ", ",
+          "Requiere: ", proyectos$Requiere_DV,
+          ", ",
+          "Requiere: ", proyectos$tiene_plano
         )
       )  %>%
-      
       addLayersControl(
         baseGroups = c("Voyager", "OSM"),
         overlayGroups = c("Afectaciones", "Proyectos"),
@@ -170,13 +169,13 @@ server <- function(input, output, session) {
   # Tabla de registro de daños
   
   output$tabla <- renderDT({
-    registros <- filtrarDanos()
+    registros <- filtrarAfectacion()
     registros %>%
-      dplyr::select(id, estructura,elemento, dano, severidad, servicio, fecha, ruta, seccion) %>%
+      dplyr::select(id_ruta, id_afectacion, no_plano, area_plano, finca_generada, estado_proceso, ubicacion, nombre_proyecto, id_provincia, id_canton, id_distrito) %>%
       st_drop_geometry() %>%
       
       datatable(rownames = FALSE,
-                colnames = c('ID', 'Estructura','Elemento', 'Daño', 'Severidad','Servicio', 'Fecha', 'Ruta', 'Sección'),
+                colnames = c('Ruta', 'Proyecto','No. Plano', 'Área [m2]', 'Finca Generada','Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
                 options = list(
                   pageLength = 7,
                   language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
@@ -184,5 +183,6 @@ server <- function(input, output, session) {
       )
   })
 }
+
 
 shinyApp(ui, server)
