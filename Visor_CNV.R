@@ -87,7 +87,7 @@ server <- function(input, output, session) {
       dplyr::select(id_afectacion, area_plano, no_plano, estado_plano, finca_generada, estado_proceso, ubicacion, id_provincia, id_canton, id_distrito, id_ruta, nombre_disenador, fecha_diseno, nombre_ingeniero_admi, no_contratacion, nombre_proyecto)
     
     # Filtrado de afectaciones por rutas
-    if (input$id_ruta= "Todas") {
+    if (input$id_ruta == "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
         filter(id_ruta == input$id_ruta)
@@ -183,6 +183,5 @@ server <- function(input, output, session) {
       )
   })
 }
-
 
 shinyApp(ui, server)
