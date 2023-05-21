@@ -67,14 +67,14 @@ ui <- dashboardPage(
       title = "Mapa de afectaciones",
       leafletOutput(outputId = "mapa"),
       width = 12
-    ),
+    )
   ),    
   fluidRow(
     box(
       title = "Tabla de información",
       DTOutput(outputId = "tabla"),
       width = 12
-    ),
+    )
   ))
 )
 
