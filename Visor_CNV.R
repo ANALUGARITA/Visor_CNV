@@ -115,7 +115,7 @@ server <- function(input, output, session) {
       addTiles(group = "OSM") %>%
       addPolygons(
         data = afectaciones,
-        color = "#38302e",
+        color = "green",
         fillColor = "green",
         stroke = TRUE,
         weight = 3,
