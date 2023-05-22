@@ -163,6 +163,7 @@ server <- function(input, output, session) {
  
       addSearchOSM() %>%
       addResetMapButton() %>%
+      addMiniMap() %>%
       addMouseCoordinates()
   })
   
