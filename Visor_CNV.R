@@ -93,7 +93,7 @@ server <- function(input, output, session) {
         filter(id_ruta == input$id_ruta)
     }   
     # Filtrado de afectaciones por afectacion
-    if (input$id_afectacion= "Todas") {
+    if (input$id_afectacion == "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
         filter(id_afectacion == input$id_afectacion)
