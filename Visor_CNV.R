@@ -33,6 +33,7 @@ proyectos <-
 lista_rutas <- unique(afectaciones$id_ruta)
 lista_rutas <- sort(lista_rutas)
 lista_rutas <- c("Ninguna", lista_rutas)
+
 # Lista ordenada de afectaciones + "Ninguna"
 lista_afectaciones <- unique(afectaciones$id_afectacion)
 lista_afectaciones <- sort(lista_afectaciones)
@@ -42,8 +43,10 @@ lista_afectaciones <- c("Ninguna", lista_afectaciones)
 # COMPONENTES DE LA APLICACIÓN SHINY
 # Definición del objeto ui
 ui <- dashboardPage(
-  dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional"),
-  #dashboardPage(skin = "skyblue"),
+  skin = "blue",
+  dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional", 
+                  titleWidth = 470
+                  ),
   dashboardSidebar(sidebarMenu(
     menuItem(
       text = "Filtros",
@@ -54,7 +57,7 @@ ui <- dashboardPage(
         selected = "Ninguna"
       ),
       selectInput(
-        inputId = "id_afectaciones",
+        inputId = "id_afectacion",
         label = "Id de afectación",
         choices = lista_afectaciones,
         selected = "Ninguna"
@@ -67,14 +70,14 @@ ui <- dashboardPage(
       title = "Mapa de afectaciones",
       leafletOutput(outputId = "mapa"),
       width = 12
-    )
+    ),
   ),    
   fluidRow(
     box(
       title = "Tabla de información",
       DTOutput(outputId = "tabla"),
       width = 12
-    )
+    ),
   ))
 )
 
@@ -87,13 +90,13 @@ server <- function(input, output, session) {
       dplyr::select(id_afectacion, area_plano, no_plano, estado_plano, finca_generada, estado_proceso, ubicacion, id_provincia, id_canton, id_distrito, id_ruta, nombre_disenador, fecha_diseno, nombre_ingeniero_admi, no_contratacion, nombre_proyecto)
     
     # Filtrado de afectaciones por rutas
-    if (input$id_ruta == "Todas") {
+    if (input$id_ruta != "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
         filter(id_ruta == input$id_ruta)
     }   
     # Filtrado de afectaciones por afectacion
-    if (input$id_afectacion == "Todas") {
+    if (input$id_afectacion != "Todas") {
       afectaciones_filtrado <-
         afectaciones_filtrado %>%
         filter(id_afectacion == input$id_afectacion)
@@ -144,15 +147,15 @@ server <- function(input, output, session) {
         fillOpacity = 1,
         group = "Proyectos",
         label = paste0(
-          "Nombre: ", registros$Nombre,
+          "Nombre: ", proyectos$Nombre,
           ", ",
-          "Estructura: ", registros$Estructura,
+          "Estructura: ", proyectos$Estructura,
           ", ",
-          "Ruta Naciona: ", registros$Ruta_Nacional,
+          "Ruta Nacional: ", proyectos$Ruta_Nacional,
           ", ",
-          "Requiere: ", proyectos$Requiere_DV,
+          "Requiere DV: ", proyectos$Requiere_DV,
           ", ",
-          "Requiere: ", proyectos$tiene_plano
+          "Tiene planos: ", proyectos$tiene_plano
         )
       )  %>%
       addLayersControl(
@@ -172,13 +175,13 @@ server <- function(input, output, session) {
   output$tabla <- renderDT({
     registros <- filtrarAfectacion()
     registros %>%
-      dplyr::select(id_ruta, id_afectacion, no_plano, area_plano, finca_generada, estado_proceso, ubicacion, nombre_proyecto, id_provincia, id_canton, id_distrito) %>%
+      dplyr::select(id_ruta, id_afectacion, no_plano, area_plano, estado_proceso, ubicacion, nombre_proyecto, id_provincia, id_canton, id_distrito) %>%
       st_drop_geometry() %>%
       
       datatable(rownames = FALSE,
-                colnames = c('Ruta', 'Proyecto','No. Plano', 'Área [m2]', 'Finca Generada','Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
+                colnames = c('Ruta', 'Proyecto','No. Plano', 'Área [m2]', 'Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
                 options = list(
-                  pageLength = 7,
+                  pageLength = 10,
                   language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
                 )
       )

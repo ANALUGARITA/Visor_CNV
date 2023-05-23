@@ -5,9 +5,9 @@ account: 8w3ba1-analugarita
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9156178
-bundleId: 7245799
+bundleId: 7250511
 url: https://8w3ba1-analugarita.shinyapps.io/Visor_CNV/
-when: 1684715984.33491
-lastSyncTime: 1684715984.33491
+when: 1684799831.0676
+lastSyncTime: 1684799831.06761
 asMultiple: FALSE
 asStatic: FALSE
