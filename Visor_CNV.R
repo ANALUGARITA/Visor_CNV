@@ -27,6 +27,7 @@ proyectos <-
     quiet = TRUE
   )
 
+logo <- "https://raw.githubusercontent.com/ANALUGARITA/Visor_CNV/main/image/logo.png"
 
 # LISTAS PARA FILTROS
 # Lista ordenada de rutas + "Ninguna"
@@ -43,7 +44,7 @@ lista_afectaciones <- c("Ninguna", lista_afectaciones)
 # COMPONENTES DE LA APLICACIÓN SHINY
 # Definición del objeto ui
 ui <- dashboardPage(
-  skin = "blue",
+  skin = "yellow",
   dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional", 
                   titleWidth = 470
                   ),
@@ -54,15 +55,14 @@ ui <- dashboardPage(
         inputId = "id_ruta",
         label = "Ruta Nacional",
         choices = lista_rutas,
-        selected = "Ninguna"
-      ),
+        selected = "Ninguna"),
       selectInput(
         inputId = "id_afectacion",
         label = "Id de afectación",
         choices = lista_afectaciones,
-        selected = "Ninguna"
-      ),
-      startExpanded = TRUE
+        selected = "Ninguna"),
+      startExpanded = TRUE,
+      icon = icon('filter')
     )
   )),
   dashboardBody(fluidRow(
@@ -104,8 +104,7 @@ server <- function(input, output, session) {
     return(afectaciones_filtrado)
   })
   
-  
-  # Mapa ubicación de las afectaciones
+   # Mapa ubicación de las afectaciones
   
   output$mapa <- renderLeaflet({
     registros <- filtrarAfectacion()
@@ -124,19 +123,13 @@ server <- function(input, output, session) {
         weight = 3,
         opacity = 1,
         group = "Afectaciones",
-        popup = (paste0(
-          "<strong>Ruta: </strong>", registros$id_ruta,
-          "<br>",
-          "<strong>No. Afectación: </strong>", registros$id_afectacion,
-          "<br>",
-          "<strong>No. Plano: </strong>", registros$no_plano,
-          "<br>",
-          "<strong>Área: </strong>", registros$area_plano,
-          "<br>",
-          "<strong>Estado: </strong>", registros$estado_proceso,
-          "<br>",
-          "<strong>Ubicación: </strong>", registros$ubicacion,
-          "<br>")
+        popup = paste0(
+          "<strong>Ruta: </strong>", registros$id_ruta, "<br>",
+          "<strong>No. Afectación: </strong>", registros$id_afectacion, "<br>",
+          "<strong>No. Plano: </strong>", registros$no_plano, "<br>",
+          "<strong>Área: </strong>", registros$area_plano, "<br>",
+          "<strong>Estado: </strong>", registros$estado_proceso, "<br>",
+          "<strong>Ubicación: </strong>", registros$ubicacion, "<br>"
         )
       ) %>%    
       addCircleMarkers(
@@ -147,27 +140,38 @@ server <- function(input, output, session) {
         fillOpacity = 1,
         group = "Proyectos",
         label = paste0(
-          "Nombre: ", proyectos$Nombre,
-          ", ",
-          "Estructura: ", proyectos$Estructura,
-          ", ",
-          "Ruta Nacional: ", proyectos$Ruta_Nacional,
-          ", ",
-          "Requiere DV: ", proyectos$Requiere_DV,
-          ", ",
+          "Nombre: ", proyectos$Nombre, ", ",
+          "Estructura: ", proyectos$Estructura, ", ",
+          "Ruta Nacional: ", proyectos$Ruta_Nacional, ", ",
+          "Requiere DV: ", proyectos$Requiere_DV, ", ",
           "Tiene planos: ", proyectos$tiene_plano
-        )
+        ), 
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "11px",
+          direction = "auto")
       )  %>%
       addLayersControl(
-        baseGroups = c("Voyager", "OSM"),
         overlayGroups = c("Afectaciones", "Proyectos"),
-        options = layersControlOptions(collapsed = T)
+        baseGroups = c("Voyager", "OSM"),
+        options = layersControlOptions(collapsed = FALSE)
       ) %>%
- 
-      addSearchOSM() %>%
+      addMiniMap(toggleDisplay = TRUE, 
+                 position = "bottomright") %>%
+      addMeasure(position = "topleft",
+                 primaryLengthUnit = "meters",
+                 primaryAreaUnit = "sqmeters",
+                 activeColor = "#3D535D",
+                 completedColor = "#7D4479", 
+                 localization = "es") %>%
+      addMouseCoordinates() %>%
       addResetMapButton() %>%
-      addMiniMap() %>%
-      addMouseCoordinates()
+      addScaleBar(position = "bottomleft", 
+                  options = scaleBarOptions(metric = TRUE,
+                                            imperial = FALSE)) %>%
+      addFullscreenControl() %>%
+      addControlGPS() %>%
+      addSearchOSM()
   })
   
   # Tabla de registro de daños
@@ -179,7 +183,7 @@ server <- function(input, output, session) {
       st_drop_geometry() %>%
       
       datatable(rownames = FALSE,
-                colnames = c('Ruta', 'Proyecto','No. Plano', 'Área [m2]', 'Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
+                colnames = c('Ruta', 'Id Afectación','No. Plano', 'Área [m2]', 'Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
                 options = list(
                   pageLength = 10,
                   language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
