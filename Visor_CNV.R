@@ -11,6 +11,7 @@ library(leaflet)
 library(leaflet.extras)
 library(leafem)
 library(shiny)
+library(htmltools)
 library(shinydashboard)
 
 # DATOS
@@ -27,8 +28,6 @@ proyectos <-
     quiet = TRUE
   )
 
-logo <- "https://raw.githubusercontent.com/ANALUGARITA/Visor_CNV/main/image/logo.png"
-
 # LISTAS PARA FILTROS
 # Lista ordenada de rutas + "Ninguna"
 lista_rutas <- unique(afectaciones$id_ruta)
@@ -40,15 +39,35 @@ lista_afectaciones <- unique(afectaciones$id_afectacion)
 lista_afectaciones <- sort(lista_afectaciones)
 lista_afectaciones <- c("Ninguna", lista_afectaciones)
 
+#ETIQUETADO
+etiquetas <- paste(
+  "<strong>Nombre: </strong>",proyectos$Nombre,
+  "<br/><strong>Estructura: </strong>", proyectos$Estructura,
+  "<br/><strong>Ruta Nacional: </strong>", proyectos$Ruta_Nacional,
+  "<br/><strong>Requiere DV: </strong>", proyectos$Requiere_DV,
+  "<br/><strong>Tiene planos: </strong>", proyectos$tiene_plano
+  ) %>% lapply(htmltools::HTML)
 
 # COMPONENTES DE LA APLICACIÓN SHINY
 # Definición del objeto ui
 ui <- dashboardPage(
-  skin = "yellow",
-  dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional", 
-                  titleWidth = 470
+  skin = "blue",
+  dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional",
+                  titleWidth = 470, 
+                  tags$li(class = "dropdown",
+                          tags$style(".main-header {max-height: 50px}"),
+                          tags$style(".main-header .logo {height: 70px;}"),
+                          tags$style(".sidebar-toggle {height: 70px; padding-top: 25px !important;}"),
+                          tags$style(".navbar {min-height: 50px !important}"),
+                  tags$li(a(href = 'https://conavi.go.cr/cat%C3%A1logo-de-proyectos',
+                            img(src = 'https://raw.githubusercontent.com/ANALUGARITA/Visor_CNV/main/www/logo.png',
+                                title = "Proyectos CONAVI", height = "50px"),
+                            style = "padding-top:10px; padding-bottom: 10px;"),
+                          class = "dropdown" 
+                          ))
                   ),
-  dashboardSidebar(sidebarMenu(
+  dashboardSidebar(sidebarMenu( 
+    tags$style(".left-side, .main-sidebar {padding-top: 70px}"),
     menuItem(
       text = "Filtros",
       selectInput(
@@ -139,18 +158,12 @@ server <- function(input, output, session) {
         fillColor = "orange",
         fillOpacity = 1,
         group = "Proyectos",
-        label = paste0(
-          "Nombre: ", proyectos$Nombre, ", ",
-          "Estructura: ", proyectos$Estructura, ", ",
-          "Ruta Nacional: ", proyectos$Ruta_Nacional, ", ",
-          "Requiere DV: ", proyectos$Requiere_DV, ", ",
-          "Tiene planos: ", proyectos$tiene_plano
-        ), 
+        label = etiquetas, 
         labelOptions = labelOptions(
           style = list("font-weight" = "normal", padding = "3px 8px"),
           textsize = "11px",
           direction = "auto")
-      )  %>%
+      ) %>%
       addLayersControl(
         overlayGroups = c("Afectaciones", "Proyectos"),
         baseGroups = c("Voyager", "OSM"),
@@ -164,14 +177,14 @@ server <- function(input, output, session) {
                  activeColor = "#3D535D",
                  completedColor = "#7D4479", 
                  localization = "es") %>%
-      addMouseCoordinates() %>%
-      addResetMapButton() %>%
       addScaleBar(position = "bottomleft", 
                   options = scaleBarOptions(metric = TRUE,
                                             imperial = FALSE)) %>%
       addFullscreenControl() %>%
+      addMouseCoordinates() %>%
       addControlGPS() %>%
-      addSearchOSM()
+      addSearchOSM() %>%
+      addResetMapButton() 
   })
   
   # Tabla de registro de daños
