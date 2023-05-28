@@ -11,6 +11,7 @@ library(leaflet)
 library(leaflet.extras)
 library(leafem)
 library(shiny)
+library(colorspace)
 library(htmltools)
 library(shinydashboard)
 
@@ -32,12 +33,12 @@ proyectos <-
 # Lista ordenada de rutas + "Ninguna"
 lista_rutas <- unique(afectaciones$id_ruta)
 lista_rutas <- sort(lista_rutas)
-lista_rutas <- c("Ninguna", lista_rutas)
+lista_rutas <- c("Todas", lista_rutas)
 
 # Lista ordenada de afectaciones + "Ninguna"
 lista_afectaciones <- unique(afectaciones$id_afectacion)
 lista_afectaciones <- sort(lista_afectaciones)
-lista_afectaciones <- c("Ninguna", lista_afectaciones)
+lista_afectaciones <- c("Todas", lista_afectaciones)
 
 #ETIQUETADO
 etiquetas <- paste(
@@ -52,8 +53,8 @@ etiquetas <- paste(
 # Definición del objeto ui
 ui <- dashboardPage(
   skin = "blue",
-  dashboardHeader(title = "Afectaciones tramitadas en la Red Vial Nacional",
-                  titleWidth = 470, 
+  dashboardHeader(title = "Afectaciones en la Red Vial Nacional",
+                  titleWidth = 360, 
                   tags$li(class = "dropdown",
                           tags$style(".main-header {max-height: 50px}"),
                           tags$style(".main-header .logo {height: 70px;}"),
@@ -74,30 +75,35 @@ ui <- dashboardPage(
         inputId = "id_ruta",
         label = "Ruta Nacional",
         choices = lista_rutas,
-        selected = "Ninguna"),
+        selected = "Todas"),
       selectInput(
         inputId = "id_afectacion",
         label = "Id de afectación",
         choices = lista_afectaciones,
-        selected = "Ninguna"),
+        selected = "Todas"),
       startExpanded = TRUE,
       icon = icon('filter')
     )
   )),
   dashboardBody(fluidRow(
-    box(
-      title = "Mapa de afectaciones",
-      leafletOutput(outputId = "mapa"),
-      width = 12
-    ),
-  ),    
-  fluidRow(
-    box(
-      title = "Tabla de información",
-      DTOutput(outputId = "tabla"),
-      width = 12
-    ),
-  ))
+            box(
+                  title = div("Mapa de afectaciones en proyectos", style = 'font-size:22px;'),
+                  solidHeader = F,
+                  leafletOutput(outputId = "mapa"),
+                  width = 9),
+            box(
+                  title = div("Estado de planos en el proyecto de la RN seleccionada", align = "center", style = 'font-size:17px;'), 
+                  solidHeader = F,
+                  plotlyOutput(outputId = "grafico_estado_proyecto"), 
+                  width = 3)
+            ),
+        fluidRow(
+            box(
+                 title = "Tabla de información de afectaciones en la RN seleccionada",
+                 solidHeader = F,
+                 DTOutput(outputId = "tabla"),
+                 width = 12)
+    ))
 )
 
 # Definición del objeto server
@@ -123,15 +129,29 @@ server <- function(input, output, session) {
     return(afectaciones_filtrado)
   })
   
-   # Mapa ubicación de las afectaciones
+  filtrarEstado <- reactive({
+    # Filtrado de geometrías para estado para el proyecto en la ruta seleccionada
+    estado_filtrado <-
+      afectaciones %>%
+      dplyr::select(id_ruta, estado_proceso, ubicacion)
+    
+    # Filtrado de afectaciones por rutas
+    if (input$id_ruta != "Todas") {
+      estado_filtrado <-
+        estado_filtrado %>%
+        filter(id_ruta == input$id_ruta)
+    }
+    return(estado_filtrado)
+  }) 
+  
+  
+   # Mapa ubicación de las afectaciones y proyectos
   
   output$mapa <- renderLeaflet({
     registros <- filtrarAfectacion()
     
-    
-    # Registro de afectaciones y proyectos
     leaflet() %>%
-      setView(-84.09, 9.84, 8) %>%
+      setView(-84.09, 9.84, 7) %>%
       addProviderTiles(providers$CartoDB.Voyager , group = "Voyager") %>%
       addTiles(group = "OSM") %>%
       addPolygons(
@@ -154,7 +174,7 @@ server <- function(input, output, session) {
       addCircleMarkers(
         data = proyectos,
         stroke = F,
-        radius = 3,
+        radius = 5,
         fillColor = "orange",
         fillOpacity = 1,
         group = "Proyectos",
@@ -187,14 +207,12 @@ server <- function(input, output, session) {
       addResetMapButton() 
   })
   
-  # Tabla de registro de daños
-  
+  # Tabla de afectaciones
   output$tabla <- renderDT({
     registros <- filtrarAfectacion()
     registros %>%
       dplyr::select(id_ruta, id_afectacion, no_plano, area_plano, estado_proceso, ubicacion, nombre_proyecto, id_provincia, id_canton, id_distrito) %>%
       st_drop_geometry() %>%
-      
       datatable(rownames = FALSE,
                 colnames = c('Ruta', 'Id Afectación','No. Plano', 'Área [m2]', 'Estado', 'Ubicación', 'Proyecto', 'Provincia', 'Cantón', 'Distrito'),
                 options = list(
@@ -202,6 +220,33 @@ server <- function(input, output, session) {
                   language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
                 )
       )
+  })
+  
+  # Gráfico de estado de proyecto seleccionado
+  output$grafico_estado_proyecto <- renderPlotly({
+    registrosEstado <- filtrarEstado()
+    
+    registrosEstado %>%
+      st_drop_geometry() %>%
+      group_by(estado_proceso) %>%
+      summarize(suma_registros = n()) %>%
+      filter(!is.na(estado_proceso))  %>%
+      plot_ly(
+        x = ~ estado_proceso,
+        y = ~ suma_registros,
+        type = "bar",
+        color = ~ estado_proceso,
+        colors = c("#FFCC00", "#FF9900", "#FF6600")
+      ) %>%
+      layout(
+        xaxis = list(title = "Estado"),
+        yaxis = list(title = "Cantidad de planos"),
+        showlegend = FALSE
+        )  %>%
+      config(
+        modeBarButtonsToRemove = c("zoom", "pan", "select", "zoomIn", "zoomOut", "autoScale", "resetScale", "zoomIn2d", "zoomOut2d", "lasso2d", "select2d"),
+        displaylogo = FALSE
+        )
   })
 }
 
